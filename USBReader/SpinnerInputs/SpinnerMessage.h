@@ -2,10 +2,12 @@
 
 enum class MessageId : uint8_t
 {
-    testConncetion,
-    mouseMovement,
-    disconnect,
-    connected,
+    testConncetion = 0,
+    movement,
+    arduinoDisconnect,
+    arduinoConnected,
+    computerConnected,
+    computerDisconnected,
     attachedInterrupts,
     failure,
     count,

@@ -9,31 +9,34 @@
 #define TEST_VERT TEST_PIN
 
 // Interrupts on the uno are only allowed on pins 2 and 3  https://docs.arduino.cc/language-reference/en/functions/external-interrupts/digitalPinToInterrupt/?_gl=1*jx3aai*_up*MQ..*_ga*NDc2NTcyODQyLjE3OTE3MDQ4OTY.*_ga_NEXN8H46L5*czE3OTE3MDQ4OTQkbzEkZzAkdDE3OTE3MDQ4OTQkajYwJGwwJGgxMzM2MDgwMjMw 
-constexpr int horzAPin = digitalPinToInterrupt(2);
+constexpr int horzAPin = 2;
 constexpr int horzBPin = 4;
 
-constexpr int vertAPin = digitalPinToInterrupt(3);
+constexpr int vertAPin = 3;
 constexpr int vertBPin = 5;
 
-volatile Message gMessage;
-volatile bool mouseMoved = false;
+volatile int deltaX = 0;
+volatile int deltaY = 0;
 
-void writeMessage(Message* pMessage)
+void writeMovement(int8_t dx, int8_t dy)
 {
-  char* data = reinterpret_cast<char*>(pMessage);
-  Serial.write(data, sizeof(Message) );
+  Serial.write( (uint8_t)MessageId::movement );
+  Serial.write( dx );
+  Serial.write( dy );
 }
 
 void writeMessage(MessageId id)
 {
   Serial.write((uint8_t)id);
+  Serial.write(0);
+  Serial.write(0);
 }
 
 void fail()
 {
-    writeMessage(MessageId::failure);
-    Serial.flush();
-    abort();
+  writeMessage(MessageId::failure);
+  Serial.flush();
+  abort();
 }
 
 struct scopedTask
@@ -44,13 +47,13 @@ struct scopedTask
 
 void makeInterrupts()
 {
-  if( -1 == horzAPin )
+  if( -1 == digitalPinToInterrupt(horzAPin) )
     fail();
-  if ( -1 == vertAPin )
+  if ( -1 == digitalPinToInterrupt(vertAPin) )
     fail();
   
-  attachInterrupt( horzAPin , &interruptHorizontal, CHANGE );
-  attachInterrupt( vertAPin , &interruptVerticle, CHANGE );
+  attachInterrupt( digitalPinToInterrupt(horzAPin) , &interruptHorizontal, CHANGE );
+  attachInterrupt( digitalPinToInterrupt(vertAPin) , &interruptVerticle, CHANGE );
 
   writeMessage(MessageId::attachedInterrupts);
 }
@@ -69,36 +72,32 @@ void setup() {
   pinMode( vertAPin  , INPUT);
   pinMode( vertBPin  , INPUT);
 
-  gMessage.dX = 0;
-  gMessage.dX = 0;
-  gMessage.id = MessageId::mouseMovement;
-
-  writeMessage(MessageId::connected);
+  writeMessage(MessageId::arduinoConnected);
 }
 
 void loop() {
-  if ( mouseMoved )
+  if( deltaX != 0 || deltaY != 0)
   {
     noInterrupts();
-    scopedTask task;
-    
-    gMessage.dY = digitalRead(vertAPin) == digitalRead(vertBPin) ? -1 : 1;
-    gMessage.dX = digitalRead(horzAPin) == digitalRead(horzBPin) ? -1 : 1;
-    writeMessage( &gMessage );
-    
-    mouseMoved = false;
+    writeMovement( deltaX, deltaY );
+    deltaX = 0;
+    deltaY = 0;
     interrupts();
   }
 
-  delay(50);
+  delay(10);
 }
 
 void interruptVerticle() {
-  mouseMoved = true;
+  int A = digitalRead(vertAPin);
+  int B = digitalRead(vertBPin);
+  A == B ? deltaY-- : deltaY++;
 }
 
 void interruptHorizontal(){
-  mouseMoved = true;
+  int A = digitalRead(horzAPin);
+  int B = digitalRead(horzBPin);
+  A == B ? deltaX-- : deltaX++;
 }
 
 

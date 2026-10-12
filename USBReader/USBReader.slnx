@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="USBReader/USBReader.vcxproj" />
+  <Project Path="USBReader/USBReader.vcxproj" Id="f437bd3d-49ab-4601-8414-47e5b6afcc41" />
 </Solution>
