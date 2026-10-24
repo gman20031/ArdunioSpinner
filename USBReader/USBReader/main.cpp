@@ -6,14 +6,23 @@
 #include <vector>
 #include <iostream>
 #include <format>
-#include <string>
 
+#include "USB_MessageHandler.h"
 #include "../SpinnerInputs/SpinnerMessage.h"
 
 #define NO_PORTS 1
 #define DISCONNECTED 0
 #define FAILURE -1
 #define BAD_MESSAGE -2
+//
+//enum class USB_ReadResult
+//{
+//    kGoodMessage,
+//    kBadMessage,
+//    kDisconnected,
+//    kTimeout,
+//    kIdle,
+//};
 
 static std::wstring GetPort()
 {
@@ -78,19 +87,35 @@ static std::wstring GetPort()
     return line;
 }
 
-static bool ReadInMessage(Message* out, HANDLE file)
+static USB_ReadResult ReadInMessage(Message* out, HANDLE file)
 {
-    char buffer[sizeof(Message)] = {};
+    constexpr int messageSize = sizeof(Message);
+    char buffer[messageSize] = {};
+    
     ULONG readBytes = 0;
-    while (!ReadFile(file, buffer, sizeof(Message), &readBytes, NULL));
+    while (readBytes < messageSize)
+    {
+        ULONG got = 0;
+        if (!ReadFile(file, buffer, messageSize - readBytes, &got, NULL))
+            return USB_ReadResult::kDisconnected;
 
+        if (got)
+        {
+            if (readBytes == 0)
+                return USB_ReadResult::kTimeout;
+            continue;
+        }
+    }
+
+    // not a real id.
     if (buffer[0] >= (int)MessageId::count)
-        return false;
+        return USB_ReadResult::kBadMessage;
+    
     out->id = static_cast<MessageId>(buffer[0]);
     out->dX = static_cast<int8_t>(buffer[1]);
     out->dY = static_cast<int8_t>(buffer[2]);
 
-    return true;
+    return USB_ReadResult::kGoodMessage;
 }
 
 static std::string MessageText(const Message msg)
@@ -120,34 +145,20 @@ static void UseMovement(int dx, int dy)
     SendInput(1, &input, sizeof(INPUT));
 }
 
-int main()
+static int Start()
 {
-    std::wstring port = GetPort();
-    if (port.empty())
-        return NO_PORTS;
-    
-    HANDLE serialHandle = CreateFileW(port.c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if (serialHandle == INVALID_HANDLE_VALUE) 
+    MessageHandler handler{};
+    auto error = handler.Open();
+    if (error != USB_Error::kGood)
     {
-        std::wcout << "Error opening serial port {" << port << "}\n";
-        return 1;
+        std::cout << "error opening message handler error : " << (int)error << '\n';
+        return FAILURE;
     }
-
-    DCB serialParameters{};
-    serialParameters.DCBlength = sizeof(serialParameters);
-    GetCommState(serialHandle, &serialParameters);
-    serialParameters.BaudRate = CBR_9600,
-    serialParameters.ByteSize = 8,
-    serialParameters.Parity = NOPARITY,
-    serialParameters.StopBits = ONE5STOPBITS,
-    SetCommState(serialHandle, &serialParameters);
-
-    std::wcout << "Opened port " << port << '\n';
-
-    Message msg{};
-    while (ReadInMessage(&msg, serialHandle))
+    while ( handler.IsRunning() )
     {
+        Message msg{};
+        if (handler.ReadMessage(&msg) != USB_ReadResult::kGoodMessage)
+            break;
         std::cout << MessageText(msg) << '\n';
         switch (msg.id)
         {
@@ -158,5 +169,51 @@ int main()
             break;
         }
     }
+    std::cout << "Stopping... error " << ToString(handler.GetError()) << '\n';
+    return DISCONNECTED;
+}
+
+int main()
+{
+    return Start();
+    //std::wstring port = GetPort();
+    //if (port.empty())
+    //    return NO_PORTS;
+    //
+    //HANDLE serialHandle = CreateFileW(port.c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    //if (serialHandle == INVALID_HANDLE_VALUE) 
+    //{
+    //    std::wcout << "Error opening serial port {" << port << "}\n";
+    //    return 1;
+    //}
+
+    //DCB serialParameters{};
+    //serialParameters.DCBlength = sizeof(serialParameters);
+    //GetCommState(serialHandle, &serialParameters);
+    //serialParameters.BaudRate = CBR_9600,
+    //serialParameters.ByteSize = 8,
+    //serialParameters.Parity = NOPARITY,
+    //serialParameters.StopBits = ONE5STOPBITS,
+    //SetCommState(serialHandle, &serialParameters);
+
+    //std::wcout << "Opened port " << port << '\n';
+
+    //Message msg{};
+    //while (ReadInMessage(&msg, serialHandle) == USB_ReadResult::kGoodMessage)
+    //{
+    //    std::cout << MessageText(msg) << '\n';
+    //    switch (msg.id)
+    //    {
+    //    case MessageId::movement: UseMovement(msg.dX, msg.dY); break;
+    //    case MessageId::arduinoDisconnect: return DISCONNECTED;
+    //    case MessageId::failure: return FAILURE;
+    //    default:
+    //        break;
+    //    }
+    //}
+    //
+    //CloseHandle(serialHandle);
+
     return BAD_MESSAGE;
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-enum class MessageId : uint8_t
+enum class MessageId : signed char
 {
     testConncetion = 0,
     movement,
@@ -16,6 +16,6 @@ enum class MessageId : uint8_t
 struct Message
 {
     MessageId id;
-    int8_t dX;
-    int8_t dY;
+    signed char  dX;
+    signed char  dY;
 };

@@ -140,9 +140,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="USB_MessageHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\SpinnerInputs\SpinnerMessage.h" />
+    <ClInclude Include="USB_MessageHandler.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

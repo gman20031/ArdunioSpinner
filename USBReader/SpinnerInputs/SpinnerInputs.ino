@@ -5,8 +5,6 @@
 #include "SpinnerMessage.h"
 
 #define TEST_PIN LED_BUILTIN
-#define TEST_HORZ TEST_PIN
-#define TEST_VERT TEST_PIN
 
 // Interrupts on the uno are only allowed on pins 2 and 3  https://docs.arduino.cc/language-reference/en/functions/external-interrupts/digitalPinToInterrupt/?_gl=1*jx3aai*_up*MQ..*_ga*NDc2NTcyODQyLjE3OTE3MDQ4OTY.*_ga_NEXN8H46L5*czE3OTE3MDQ4OTQkbzEkZzAkdDE3OTE3MDQ4OTQkajYwJGwwJGgxMzM2MDgwMjMw 
 constexpr int horzAPin = 2;
